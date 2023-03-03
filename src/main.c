@@ -55,7 +55,6 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        // 判断是否为 POST 请求
 // 判断是否为 POST 请求
 char *post_path = strstr(buffer, "POST /post");
 if (post_path) {
