@@ -12,7 +12,7 @@ using namespace std;
 bool has_key(const char* buffer, const char* key) {
     std::string haystack(buffer);
     std::string needle(key);
-    return haystack.find("POST /post") != std::string::npos && haystack.find(key) != std::string::npos;
+    return haystack.find("POST /api/v1") != std::string::npos && haystack.find(key) != std::string::npos;
 }
 
 int main(int argc, char* argv[]) {
@@ -65,57 +65,75 @@ int main(int argc, char* argv[]) {
 
         // 判断是否为 POST 请求，并检查key
         if (has_key(buffer, "my_secret_key")) {
-            // 查找请求头结束标记
-            void* header_end = memmem(buffer, read_size, "\r\n\r\n", 4);
-            if (header_end) {
-                // 写入文件
-                FILE* file = fopen("a.txt", "w");
-                if (!file) {
-                    perror("open file failed");
-                    close(client_fd);
-                    continue;
-                }
-                fwrite(reinterpret_cast<char*>(header_end) + 4, 1, read_size - (reinterpret_cast<char*>(header_end) - buffer) - 4, file);
-                fclose(file);
-
-                // 发送响应
-                std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
-                if (send(client_fd, response.c_str(), response.length(), 0) < 0) {
-                    perror("send failed");
-                    close(client_fd);
-                    continue;
-                }
-
-                std::cout << "POST request handled,data saved to a.txt" << std::endl;
-    } else {
-    // 发送响应
-    std::string response = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
-    if (send(client_fd, response.c_str(), response.length(), 0) < 0) {
-    perror("send failed");
-    close(client_fd);
-    continue;
-    }
-                std::cout << "Invalid request handled" << std::endl;
-        }
-    } else {
-        // 发送响应
-        std::string response = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
-        if (send(client_fd, response.c_str(), response.length(), 0) < 0) {
+            char* post_path = strstr(buffer, "POST /api/v1");
+            if (post_path) {
+                // 查找请求头结束标记
+                void* header_end = memmem(buffer, read_size, "\r\n\r\n", 4);
+                if (header_end) {
+                    // 获取请求体
+                    std::string body(buffer, buffer + read_size);
+                    std::string domain_key = "domain="; // 获取请求中的Domain变量
+                    std::string mod_key = "mod=";
+                    std::string enable_ssl = "ssl=";
+                    std::string waf = "waf=";
+                    std::string uam = "uam=";
+                    std::size_t domain_pos = body.find(domain_key);
+                    std::size_t mod_pos = body.find(mod_key);
+                    std::size_t enable_ssl_pos = body.find(enable_ssl);
+                    std::size_t waf_pos = body.find(waf);
+                    std::size_t uam_pos = body.find(uam);
+                    if (mod_pos != std::string::npos) {
+                    std::string mod_value = body.substr(mod_pos + mod_key.length(), body.length() - mod_pos - mod_key.length());
+                    switch (mod_value) {
+                        case create:
+                            create();
+                        case delete:
+                            delete();
+                        case uamon:
+                            uamon()
+                        case uamoff:
+                            uamoff();
+                        case wafon:
+                            wafon();
+                        case wafoff:
+                            wafoff();
+                        case info:
+                            info();
+                        case statistics:
+                            statistics();
+                        default:
+                            std::cout << "Mod error!" <<< std::endl;
+                    }
+                    if (domain_pos != std::string::npos) {
+                        std::string domain_value = body.substr(domain_pos + domain_key.length(), body.length() - domain_pos - domain_key.length()); // 实际使用domain_cualue变量
+            } else {
+            // 发送响应
+            std::string response = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
+            if (send(client_fd, response.c_str(), response.length(), 0) < 0) {
             perror("send failed");
             close(client_fd);
             continue;
+            }
+                std::cout << "Invalid request handled" << std::endl;
+            }
+                } else {
+                    // 发送响应
+                    std::string response = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
+                    if (send(client_fd, response.c_str(), response.length(), 0) < 0) {
+                        perror("send failed");
+                        close(client_fd);
+                        continue;
+                }
+
+            std::cout << "Invalid key" << std::endl;
         }
 
-        std::cout << "Invalid key" << std::endl;
+        // 关闭连接
+        close(client_fd);
     }
-
-    // 关闭连接
-    close(client_fd);
-}
 
 // 关闭服务器套接字
 close(server_fd);
 
 return 0;
 }
-
